@@ -1,0 +1,153 @@
+create database students;
+
+\c 
+
+create table students ();
+create table majors ();
+create table courses ();
+create table majors_courses ();
+
+\d
+
+alter table students add column student_id serial primary key;
+alter table students add column first_name varchar (50) not null;
+alter table students add column last_name varchar (50) not null;
+alter table students add column major_id int;
+alter table students add column gpa numeric(2,1);
+
+\d students 
+
+alter table majors add column major_id serial primary key;
+alter table majors add column major varchar (50) not null;
+
+\d majors
+
+alter table students add foreign key (major_id) references majors (major_id);
+
+\d students 
+
+alter table courses add column course_id serial primary key;
+alter table courses add column course varchar (100) not null;
+
+\d courses
+
+alter table majors_courses add column major_id int;
+alter table majors_courses add foreign key (major_id) references majors (major_id);
+alter table majors_courses add column course_id int;
+alter table majors_courses add foreign key (course_id) references courses (course_id);
+
+\d majors_courses
+
+alter table majors_courses add primary key (major_id, course_id);
+
+\d majors_courses
+
+\d
+
+\d majors
+
+insert into majors (major) values ('Database Administration');
+
+select * from majors;
+
+insert into courses (course) values ('Data Structures and Algorithms');
+
+select * from courses;
+
+\d majors_courses
+
+insert into majors_courses (major_id, course_id) values (1, 1);
+
+select * from majors_courses;
+
+insert into students (first_name, last_name, major_id, gpa) values ('Rhea', 'Kellems', 1, 2.5);
+
+select * from students;
+
+-- bash script to insert data into the tables created above.
+
+#!/bin/bash
+
+# Script to insert data from courses.csv and students.csv into students database
+
+PSQL="psql -X --username=freecodecamp --dbname=students --no-align --tuples-only -c"
+echo $($PSQL "TRUNCATE students, majors, courses, majors_courses")
+
+cat courses.csv | while IFS="," read MAJOR COURSE
+do
+  if [[ $MAJOR != "major" ]]
+  then
+    # get major_id
+    MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'")
+
+    # if not found
+    if [[ -z $MAJOR_ID ]]
+    then
+      # insert major
+      INSERT_MAJOR_RESULT=$($PSQL "INSERT INTO majors(major) VALUES('$MAJOR')")
+      if [[ $INSERT_MAJOR_RESULT == "INSERT 0 1" ]]
+      then
+        echo Inserted into majors, $MAJOR
+      fi
+
+      # get new major_id
+      MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'")
+    fi
+
+    # get course_id
+    COURSE_ID=$($PSQL "SELECT course_id FROM courses WHERE course='$COURSE'")
+
+    # if not found
+    if [[ -z $COURSE_ID ]]
+    then
+      # insert course
+      INSERT_COURSE_RESULT=$($PSQL "INSERT INTO courses(course) VALUES('$COURSE')")
+      if [[ $INSERT_COURSE_RESULT == "INSERT 0 1" ]]
+      then
+        echo Inserted into courses, $COURSE
+      fi
+
+      # get new course_id
+      COURSE_ID=$($PSQL "SELECT course_id FROM courses WHERE course='$COURSE'")
+    fi
+
+    # insert into majors_courses
+    INSERT_MAJORS_COURSES_RESULT=$($PSQL "INSERT INTO majors_courses(major_id, course_id) VALUES($MAJOR_ID, $COURSE_ID)")
+    if [[ $INSERT_MAJORS_COURSES_RESULT == "INSERT 0 1" ]]
+    then
+      echo Inserted into majors_courses, $MAJOR : $COURSE
+    fi
+  fi
+done
+
+cat students.csv | while IFS="," read FIRST LAST MAJOR GPA
+do
+  if [[ $FIRST != "first_name" ]]
+  then
+    # get major_id
+    MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'") 
+    
+    # if not found
+    if [[ -z $MAJOR_ID ]]
+    then
+      # set to null
+      MAJOR_ID=null
+    fi   
+
+    # insert student
+    INSERT_STUDENT_RESULT=$($PSQL "insert into students(first_name,  last_name, major_id, gpa) values ('$FIRST', '$LAST' , $MAJOR_ID, $GPA)")
+    if [[ $INSERT_STUDENT_RESULT == "INSERT 0 1" ]]
+    then
+      echo "Inserted into students, $FIRST $LAST"
+    fi
+  fi
+done
+
+
+
+
+
+
+
+
+
